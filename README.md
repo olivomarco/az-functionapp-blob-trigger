@@ -9,6 +9,7 @@ Run following bash script:
 ```bash
 RAND=$(( $RANDOM % 1000 + 1 ))
 PREFIX=myprefix
+PLAN="consumption"
 
 az group create --name $PREFIX-rg --location westeurope
 az storage account create --name sa$PREFIX$RAND --resource-group $PREFIX-rg --location westeurope --sku Standard_LRS --kind StorageV2
@@ -18,7 +19,13 @@ CONN_STRING=$(az storage account show-connection-string --name sa$PREFIX$RAND -g
 
 az storage account create --name func$PREFIX$RAND --resource-group $PREFIX-rg --location westeurope --sku Standard_LRS --kind StorageV2
 
-az functionapp create --name func-exp-$PREFIX$RAND -g $PREFIX-rg --storage-account func$PREFIX$RAND --consumption-plan-location westeurope --runtime python --runtime-version 3.9 --os-type linux
+if [ "$PLAN" = "consumption" ]; then
+    az functionapp create --name func-exp-$PREFIX$RAND -g $PREFIX-rg --storage-account func$PREFIX$RAND --consumption-plan-location westeurope --runtime python --runtime-version 3.9 --os-type linux
+else
+    az functionapp plan create --name $PREFIX-plan --resource-group $PREFIX-rg --location westeurope --sku $PLAN --is-linux
+    az functionapp create --name func-exp-$PREFIX$RAND -g $PREFIX-rg --storage-account func$PREFIX$RAND --plan $PREFIX-plan --runtime python --runtime-version 3.9 --os-type linux
+fi
+
 az functionapp config appsettings set --name func-exp-$PREFIX$RAND -g $PREFIX-rg --settings exportstorage=$CONN_STRING
 
 zip -r func.zip .
